@@ -3,20 +3,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, Activity, Search, Brain, Terminal, Cpu, HardDrive,
   Wifi, FileWarning, ShieldCheck, Clock, Database, Zap, ChevronRight,
-  Play, Square, RotateCcw, Eye
+  Play, Square, RotateCcw, Eye, ShieldAlert
 } from "lucide-react";
 import ShieldLogo from "@/components/ShieldLogo";
 import StatsCard from "@/components/StatsCard";
 import LogTerminal from "@/components/LogTerminal";
 import ScanProgress from "@/components/ScanProgress";
 import ThreatList from "@/components/ThreatList";
+import MaxProtection from "@/components/MaxProtection";
 import {
   LogEntry, ThreatEntry, SystemStats,
   generateRandomThreat, getRandomCleanFile, getRandomPath,
   getInitialStats, formatBytes
 } from "@/lib/antivirus-engine";
 
-type Tab = "dashboard" | "scan" | "smart" | "logs";
+type Tab = "dashboard" | "protection" | "scan" | "smart" | "logs";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
@@ -28,6 +29,7 @@ const Index = () => {
   const [currentFile, setCurrentFile] = useState("");
   const [smartMode, setSmartMode] = useState(false);
   const [engineOnline, setEngineOnline] = useState(true);
+  const [maxProtection, setMaxProtection] = useState(false);
   const scanInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const addLog = useCallback((message: string, type: LogEntry["type"] = "info") => {
@@ -139,6 +141,17 @@ const Index = () => {
     addLog("Ameaça removida com sucesso.", "success");
   }, [addLog]);
 
+  const toggleMaxProtection = useCallback(() => {
+    setMaxProtection((prev) => {
+      const next = !prev;
+      addLog(
+        next ? "🛡️ PROTEÇÃO MÁXIMA ATIVADA — Bloqueio total de ameaças" : "⚠ Proteção Máxima DESATIVADA",
+        next ? "success" : "warning"
+      );
+      return next;
+    });
+  }, [addLog]);
+
   const toggleSmartMode = useCallback(() => {
     setSmartMode((prev) => {
       const next = !prev;
@@ -152,6 +165,7 @@ const Index = () => {
 
   const tabs: { id: Tab; icon: typeof Shield; label: string }[] = [
     { id: "dashboard", icon: Activity, label: "Dashboard" },
+    { id: "protection", icon: ShieldAlert, label: "Proteção" },
     { id: "scan", icon: Search, label: "Escaneamento" },
     { id: "smart", icon: Brain, label: "Modo Inteligente" },
     { id: "logs", icon: Terminal, label: "Logs" },
@@ -311,6 +325,21 @@ const Index = () => {
                 </h3>
                 <LogTerminal logs={logs.slice(-10)} maxHeight="180px" />
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === "protection" && (
+            <motion.div
+              key="protection"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <MaxProtection
+                enabled={maxProtection}
+                onToggle={toggleMaxProtection}
+                onLog={addLog}
+              />
             </motion.div>
           )}
 
