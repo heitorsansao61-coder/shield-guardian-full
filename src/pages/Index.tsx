@@ -58,17 +58,24 @@ const Index = () => {
     addLog("Monitoramento de rede: ATIVO", "info");
   }, []);
 
+  const [scanComplete, setScanComplete] = useState(false);
+  const [scanFoundThreats, setScanFoundThreats] = useState(false);
+
   const startScan = useCallback((type: "quick" | "full") => {
     if (isScanning) return;
     setIsScanning(true);
     setScanProgress(0);
     setThreats([]);
+    setScanComplete(false);
+    setScanFoundThreats(false);
 
     const totalFiles = type === "quick" ? 50 : 150;
     const interval = type === "quick" ? 80 : 60;
     let scanned = 0;
+    let foundAny = false;
 
     addLog(`Iniciando varredura ${type === "quick" ? "rápida" : "completa"}...`, "info");
+    addLog("Verificando integridade dos arquivos do sistema...", "info");
 
     scanInterval.current = setInterval(() => {
       scanned++;
@@ -79,14 +86,11 @@ const Index = () => {
       const path = getRandomPath();
       setCurrentFile(`${path}${fileName}`);
 
-      // Random threat detection
-      if (Math.random() < 0.06) {
-        const threat = generateRandomThreat();
-        setThreats((prev) => [...prev, threat]);
-        addLog(`AMEAÇA DETECTADA: ${threat.threat} em ${threat.path}${threat.fileName}`, "threat");
-        setStats((s) => ({ ...s, threatsBlocked: s.threatsBlocked + 1 }));
-      } else if (scanned % 10 === 0) {
-        addLog(`Analisando: ${path}${fileName}`, "info");
+      if (scanned % 10 === 0) {
+        addLog(`Verificando: ${path}${fileName}`, "info");
+      }
+      if (scanned % 25 === 0) {
+        addLog(`${scanned} arquivos verificados — sem ameaças até agora`, "info");
       }
 
       if (scanned >= totalFiles) {
@@ -94,7 +98,16 @@ const Index = () => {
         setIsScanning(false);
         setScanProgress(100);
         setCurrentFile("");
-        addLog(`Varredura concluída. ${scanned} arquivos verificados.`, "success");
+        setScanComplete(true);
+        setScanFoundThreats(foundAny);
+
+        if (!foundAny) {
+          addLog(`✅ Varredura concluída. ${scanned} arquivos verificados — Nenhum vírus encontrado!`, "success");
+          addLog("Seu sistema está limpo e protegido.", "success");
+        } else {
+          addLog(`⚠ Varredura concluída. ${scanned} arquivos verificados — Ameaças encontradas!`, "threat");
+        }
+
         setStats((s) => ({
           ...s,
           filesMonitored: s.filesMonitored + scanned,
@@ -340,12 +353,37 @@ const Index = () => {
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                  <FileWarning size={14} /> Ameaças Detectadas ({threats.length})
-                </h3>
-                <ThreatList threats={threats} onQuarantine={handleQuarantine} onRemove={handleRemove} />
-              </div>
+              {scanComplete && !scanFoundThreats && threats.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="rounded-lg border border-primary/30 bg-primary/5 neon-border p-8 text-center"
+                >
+                  <ShieldCheck size={56} className="mx-auto mb-4 text-primary neon-text" />
+                  <h3 className="font-display text-xl font-bold text-primary neon-text mb-2">
+                    Nenhum Vírus Encontrado!
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Seu sistema está limpo e totalmente protegido. Todos os arquivos foram verificados.
+                  </p>
+                </motion.div>
+              )}
+
+              {threats.length > 0 && (
+                <div>
+                  <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                    <FileWarning size={14} /> Ameaças Detectadas ({threats.length})
+                  </h3>
+                  <ThreatList threats={threats} onQuarantine={handleQuarantine} onRemove={handleRemove} />
+                </div>
+              )}
+
+              {!scanComplete && !isScanning && threats.length === 0 && (
+                <div className="text-center py-10 text-muted-foreground">
+                  <Search size={40} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Inicie uma varredura para verificar seu sistema</p>
+                </div>
+              )}
             </motion.div>
           )}
 
