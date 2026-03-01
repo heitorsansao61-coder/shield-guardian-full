@@ -19,6 +19,17 @@ import {
 
 type Tab = "dashboard" | "protection" | "scan" | "smart" | "logs";
 
+// Helpers para localStorage
+const loadSetting = <T,>(key: string, fallback: T): T => {
+  try {
+    const saved = localStorage.getItem(`nanoshield_${key}`);
+    return saved !== null ? JSON.parse(saved) : fallback;
+  } catch { return fallback; }
+};
+const saveSetting = (key: string, value: unknown) => {
+  localStorage.setItem(`nanoshield_${key}`, JSON.stringify(value));
+};
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [stats, setStats] = useState<SystemStats>(getInitialStats);
@@ -27,10 +38,14 @@ const Index = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState("");
-  const [smartMode, setSmartMode] = useState(false);
+  const [smartMode, setSmartMode] = useState(() => loadSetting("smartMode", false));
   const [engineOnline, setEngineOnline] = useState(true);
-  const [maxProtection, setMaxProtection] = useState(false);
+  const [maxProtection, setMaxProtection] = useState(() => loadSetting("maxProtection", false));
   const scanInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Persistir configurações quando mudam
+  useEffect(() => { saveSetting("smartMode", smartMode); }, [smartMode]);
+  useEffect(() => { saveSetting("maxProtection", maxProtection); }, [maxProtection]);
 
   const addLog = useCallback((message: string, type: LogEntry["type"] = "info") => {
     setLogs((prev) => [
