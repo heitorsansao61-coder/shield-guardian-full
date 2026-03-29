@@ -575,10 +575,14 @@ const Index = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border mt-8 py-4">
-        <p className="text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          NanoShield © 2026 — 100% Segurança · Detecta qualquer vírus de qualquer tamanho · Atualizado na última versão
-        </p>
+      <footer className="border-t border-border mt-8 py-5 px-4">
+        <div className="text-center space-y-1">
+          <p className="text-xs font-bold text-primary">🛡️ 100% SEGURANÇA GARANTIDA</p>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Detecta qualquer vírus · Protege contra hackers · Impede roubo de dados e clonagem de cartão
+          </p>
+          <p className="text-[9px] text-muted-foreground/60 mt-2">NanoShield © 2026</p>
+        </div>
       </footer>
     </div>
   );
