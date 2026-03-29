@@ -41,11 +41,13 @@ const Index = () => {
   const [smartMode, setSmartMode] = useState(() => loadSetting("smartMode", false));
   const [engineOnline, setEngineOnline] = useState(true);
   const [maxProtection, setMaxProtection] = useState(() => loadSetting("maxProtection", false));
+  const [scanPower, setScanPower] = useState<"weak" | "normal" | "strong">(() => loadSetting("scanPower", "normal"));
   const scanInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Persistir configurações quando mudam
   useEffect(() => { saveSetting("smartMode", smartMode); }, [smartMode]);
   useEffect(() => { saveSetting("maxProtection", maxProtection); }, [maxProtection]);
+  useEffect(() => { saveSetting("scanPower", scanPower); }, [scanPower]);
 
   const addLog = useCallback((message: string, type: LogEntry["type"] = "info") => {
     setLogs((prev) => [
@@ -86,12 +88,16 @@ const Index = () => {
     setScanComplete(false);
     setScanFoundThreats(false);
 
-    const totalFiles = type === "quick" ? 50 : 150;
-    const interval = type === "quick" ? 80 : 60;
+    // Scan power affects file count and speed
+    const powerMultiplier = scanPower === "weak" ? 0.5 : scanPower === "strong" ? 2 : 1;
+    const totalFiles = Math.round((type === "quick" ? 50 : 150) * powerMultiplier);
+    const interval = scanPower === "strong" ? 40 : scanPower === "weak" ? 120 : (type === "quick" ? 80 : 60);
+    const powerLabel = scanPower === "weak" ? "FRACO" : scanPower === "strong" ? "FORTE" : "NORMAL";
     let scanned = 0;
     let foundAny = false;
 
-    addLog(`Iniciando varredura ${type === "quick" ? "rápida" : "completa"}...`, "info");
+    addLog(`Iniciando varredura ${type === "quick" ? "rápida" : "completa"} [Modo ${powerLabel}]...`, "info");
+    addLog(`Potência: ${powerLabel} — ${totalFiles} arquivos serão verificados`, "info");
     addLog("Verificando integridade dos arquivos do sistema...", "info");
 
     scanInterval.current = setInterval(() => {
@@ -132,7 +138,7 @@ const Index = () => {
         }));
       }
     }, interval);
-  }, [isScanning, addLog]);
+  }, [isScanning, addLog, scanPower]);
 
   const stopScan = useCallback(() => {
     if (scanInterval.current) {
