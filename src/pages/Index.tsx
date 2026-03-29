@@ -577,7 +577,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border mt-8 py-4">
         <p className="text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          NanoShield © 2026 — Proteção Máxima · Até 150MB por Arquivo
+          NanoShield © 2026 — Podemos detectar qualquer vírus · Atualizado na última versão
         </p>
       </footer>
     </div>
