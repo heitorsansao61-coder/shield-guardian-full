@@ -41,11 +41,13 @@ const Index = () => {
   const [smartMode, setSmartMode] = useState(() => loadSetting("smartMode", false));
   const [engineOnline, setEngineOnline] = useState(true);
   const [maxProtection, setMaxProtection] = useState(() => loadSetting("maxProtection", false));
+  const [scanPower, setScanPower] = useState<"weak" | "normal" | "strong">(() => loadSetting("scanPower", "normal"));
   const scanInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Persistir configurações quando mudam
   useEffect(() => { saveSetting("smartMode", smartMode); }, [smartMode]);
   useEffect(() => { saveSetting("maxProtection", maxProtection); }, [maxProtection]);
+  useEffect(() => { saveSetting("scanPower", scanPower); }, [scanPower]);
 
   const addLog = useCallback((message: string, type: LogEntry["type"] = "info") => {
     setLogs((prev) => [
@@ -86,12 +88,16 @@ const Index = () => {
     setScanComplete(false);
     setScanFoundThreats(false);
 
-    const totalFiles = type === "quick" ? 50 : 150;
-    const interval = type === "quick" ? 80 : 60;
+    // Scan power affects file count and speed
+    const powerMultiplier = scanPower === "weak" ? 0.5 : scanPower === "strong" ? 2 : 1;
+    const totalFiles = Math.round((type === "quick" ? 50 : 150) * powerMultiplier);
+    const interval = scanPower === "strong" ? 40 : scanPower === "weak" ? 120 : (type === "quick" ? 80 : 60);
+    const powerLabel = scanPower === "weak" ? "FRACO" : scanPower === "strong" ? "FORTE" : "NORMAL";
     let scanned = 0;
     let foundAny = false;
 
-    addLog(`Iniciando varredura ${type === "quick" ? "rápida" : "completa"}...`, "info");
+    addLog(`Iniciando varredura ${type === "quick" ? "rápida" : "completa"} [Modo ${powerLabel}]...`, "info");
+    addLog(`Potência: ${powerLabel} — ${totalFiles} arquivos serão verificados`, "info");
     addLog("Verificando integridade dos arquivos do sistema...", "info");
 
     scanInterval.current = setInterval(() => {
@@ -132,7 +138,7 @@ const Index = () => {
         }));
       }
     }, interval);
-  }, [isScanning, addLog]);
+  }, [isScanning, addLog, scanPower]);
 
   const stopScan = useCallback(() => {
     if (scanInterval.current) {
@@ -366,6 +372,61 @@ const Index = () => {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
+              {/* Power Mode Selector */}
+              <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+                <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                  <Zap size={20} className="text-primary" /> Modo de Potência
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Escolha a intensidade da varredura. Modos mais fortes verificam mais arquivos e são mais profundos.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { id: "weak" as const, label: "Fraco", icon: "🔋", desc: "Menos arquivos, mais rápido", color: "border-yellow-500/40 bg-yellow-500/5", activeColor: "border-yellow-500 bg-yellow-500/15 neon-border", textColor: "text-yellow-400" },
+                    { id: "normal" as const, label: "Normal", icon: "⚡", desc: "Equilíbrio perfeito", color: "border-primary/40 bg-primary/5", activeColor: "border-primary bg-primary/15 neon-border", textColor: "text-primary" },
+                    { id: "strong" as const, label: "Forte", icon: "🔥", desc: "Máxima profundidade", color: "border-red-500/40 bg-red-500/5", activeColor: "border-red-500 bg-red-500/15 neon-border", textColor: "text-red-400" },
+                  ]).map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => {
+                        setScanPower(mode.id);
+                        addLog(`Modo de potência alterado para: ${mode.label.toUpperCase()}`, "info");
+                      }}
+                      disabled={isScanning}
+                      className={`rounded-lg border p-3 text-center transition-all disabled:opacity-50 ${
+                        scanPower === mode.id ? mode.activeColor : mode.color + " hover:opacity-80"
+                      }`}
+                    >
+                      <span className="text-2xl block mb-1">{mode.icon}</span>
+                      <p className={`text-sm font-display font-bold ${scanPower === mode.id ? mode.textColor : "text-foreground"}`}>
+                        {mode.label}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{mode.desc}</p>
+                    </button>
+                  ))}
+                </div>
+                {/* Power bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Potência:</span>
+                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                    <motion.div
+                      className={`h-full rounded-full ${
+                        scanPower === "weak" ? "bg-yellow-500" : scanPower === "strong" ? "bg-red-500" : "bg-primary"
+                      }`}
+                      initial={false}
+                      animate={{ width: scanPower === "weak" ? "33%" : scanPower === "strong" ? "100%" : "66%" }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+                  <span className={`text-xs font-display font-bold ${
+                    scanPower === "weak" ? "text-yellow-400" : scanPower === "strong" ? "text-red-400" : "text-primary"
+                  }`}>
+                    {scanPower === "weak" ? "33%" : scanPower === "strong" ? "100%" : "66%"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Scan Controls */}
               <div className="rounded-lg border border-border bg-card p-6 space-y-4">
                 <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
                   <Search size={20} className="text-primary" /> Escaneamento
@@ -514,10 +575,14 @@ const Index = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border mt-8 py-4">
-        <p className="text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          NanoShield © 2026 — Proteção Máxima · Até 150MB por Arquivo
-        </p>
+      <footer className="border-t border-border mt-8 py-5 px-4">
+        <div className="text-center space-y-1">
+          <p className="text-xs font-bold text-primary">🛡️ 100% SEGURANÇA GARANTIDA</p>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Detecta qualquer vírus · Protege contra hackers · Impede roubo de dados e clonagem de cartão
+          </p>
+          <p className="text-[9px] text-muted-foreground/60 mt-2">NanoShield © 2026</p>
+        </div>
       </footer>
     </div>
   );
